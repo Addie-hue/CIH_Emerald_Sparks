@@ -13,9 +13,9 @@ get_graph() -> networkx.MultiDiGraph
 
 Edge weight attributes written here
 ------------------------------------
-base_weight        : float  — length_m / typical_speed_m_s  (seconds)
-weight_ambulance   : float  — starts equal to base_weight; mutated by flood.py
-weight_4x4         : float  — starts equal to base_weight; mutated by flood.py
+base_weight : float  — length_m / typical_speed_m_s  (seconds, road-type aware)
+weight      : float  — starts equal to base_weight; mutated in-place by
+                       flood.py when a hazard zone covers the edge.
 """
 
 import os
@@ -90,14 +90,14 @@ _graph: nx.MultiDiGraph | None = None  # singleton, populated at import time
 
 def _annotate_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     """
-    Walk every edge and write base_weight, weight_ambulance, weight_4x4.
+    Walk every edge and write base_weight + weight (single fixed profile).
+    flood.py mutates 'weight' in place when a hazard zone is applied.
     This is idempotent — calling it twice is safe.
     """
     for _u, _v, _k, data in G.edges(keys=True, data=True):
         bw = _compute_base_weight(data)
-        data["base_weight"]      = bw
-        data["weight_ambulance"] = bw   # flood.py will raise these when flooded
-        data["weight_4x4"]       = bw
+        data["base_weight"] = bw
+        data["weight"]      = bw   # flood.py raises this for hazard zones
     logger.debug("Graph annotation complete — %d edges processed.", G.number_of_edges())
     return G
 

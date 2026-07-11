@@ -3,100 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency Flood Routing Dashboard</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Leaflet CSS -->
+    <meta name="description" content="Live flood and landslide-aware emergency navigation for Mangaluru.">
+    <title>CIH 2026 — Navigation</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-900 text-white h-screen w-screen overflow-hidden flex font-sans">
-    
-    <!-- Sidebar -->
-    <aside class="w-80 h-full bg-gray-900 border-r border-gray-800 flex flex-col shadow-2xl z-[1000] relative">
-        <div class="p-6 border-b border-gray-800 bg-gray-900">
-            <h1 class="text-xl font-bold text-blue-500 tracking-wide uppercase flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                Flood Routing
-            </h1>
-            <p class="text-xs text-gray-400 mt-1 uppercase tracking-wider">Emergency Operations Center</p>
+<body>
+
+<!-- ── Nav panel ───────────────────────────────────────────────────────────── -->
+<div id="nav-panel" class="panel">
+
+    <!-- Header -->
+    <div class="panel-header">
+        <div class="panel-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            Navigation
+        </div>
+        <div id="ws-badge" class="badge badge-offline">● Offline</div>
+    </div>
+
+    <!-- SETUP MODE: click-to-set origin / destination -->
+    <div id="setup-section">
+        <p id="setup-hint" class="setup-hint">Click the map to set <strong>origin</strong></p>
+
+        <div class="coord-row" id="origin-row">
+            <span class="coord-icon origin-icon">●</span>
+            <span class="coord-label" id="origin-label">Not set</span>
+            <button class="coord-clear" id="origin-clear" onclick="clearOrigin()" title="Clear">✕</button>
+        </div>
+        <div class="coord-row" id="dest-row">
+            <span class="coord-icon dest-icon">▼</span>
+            <span class="coord-label" id="dest-label">Not set</span>
+            <button class="coord-clear" id="dest-clear" onclick="clearDestination()" title="Clear">✕</button>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar bg-gray-950/30">
-            <!-- Road Controls -->
-            <section>
-                <h2 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Selected Road Controls</h2>
-                <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm shadow-inner transition-colors duration-300" id="road-control-card">
-                    <div class="flex justify-between items-center mb-4">
-                        <span id="selected-road-name" class="text-sm font-medium text-gray-400 truncate">No Road Selected</span>
-                        <span id="depth-display" class="text-sm font-black text-blue-400 font-mono bg-blue-900/20 px-2 py-1 rounded">0 cm</span>
-                    </div>
-                    <input type="range" id="depth-slider" min="0" max="100" value="0" disabled
-                        class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-not-allowed accent-blue-500 hover:accent-blue-400 transition-all">
-                    <p class="text-[11px] text-gray-500 mt-3 leading-tight">Adjust reported water depth to trigger real-time route recalculations.</p>
-                </div>
-            </section>
+        <button id="start-btn" class="action-btn" disabled onclick="startNavigation()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start Navigation
+        </button>
+    </div>
 
-            <!-- Ambulances -->
-            <section>
-                <h2 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Active Ambulances</h2>
-                <ul id="ambulance-list" class="space-y-3">
-                    <li class="text-sm text-gray-600 italic bg-gray-800/20 border border-gray-800/50 rounded-xl p-4 text-center" id="no-ambulances">
-                        No active routes at this time.
-                    </li>
-                    <!-- Dynamic ambulance items will go here -->
-                </ul>
-            </section>
-
-            <!-- Emergencies -->
-            <section>
-                <h2 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Active Emergencies</h2>
-                <ul id="emergencies-list" class="space-y-3">
-                    <!-- Placeholder emergencies for UI visuals -->
-                    <li class="bg-red-950/30 border border-red-900/50 rounded-xl p-3 hover:bg-red-900/40 transition-colors">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-sm font-bold text-red-400 flex items-center gap-1">
-                                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                                EVAC-01
-                            </span>
-                            <span class="text-[10px] px-2 py-0.5 bg-red-900/80 text-red-200 rounded text-xs font-semibold tracking-wide border border-red-800">CRITICAL</span>
-                        </div>
-                        <p class="text-xs text-gray-400 leading-tight">Stranded family at Lower Bendoor due to flash flooding.</p>
-                    </li>
-                     <li class="bg-yellow-950/30 border border-yellow-900/50 rounded-xl p-3 hover:bg-yellow-900/40 transition-colors">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-sm font-bold text-yellow-400 flex items-center gap-1">
-                                <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
-                                MED-04
-                            </span>
-                            <span class="text-[10px] px-2 py-0.5 bg-yellow-900/80 text-yellow-200 rounded text-xs font-semibold tracking-wide border border-yellow-800">HIGH</span>
-                        </div>
-                        <p class="text-xs text-gray-400 leading-tight">Emergency medical supplies needed at Kankanady center.</p>
-                    </li>
-                </ul>
-            </section>
-        </div>
-        
-        <div class="p-4 border-t border-gray-800 bg-gray-900 text-[10px] text-gray-500 text-center uppercase tracking-widest flex justify-between items-center">
-            <span>System Status</span>
-            <div class="flex items-center gap-1 text-green-500">
-                <div id="connection-indicator" class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                <span id="connection-text" class="text-gray-400">Offline</span>
+    <!-- ACTIVE TRIP: live stats, stop button -->
+    <div id="trip-section" class="hidden">
+        <div class="stats-row">
+            <div class="stat-cell">
+                <span class="stat-val" id="stat-speed">—</span>
+                <span class="stat-lbl">km/h</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-cell">
+                <span class="stat-val" id="stat-dist">—</span>
+                <span class="stat-lbl">km left</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-cell">
+                <span class="stat-val" id="stat-eta">—</span>
+                <span class="stat-lbl">min ETA</span>
             </div>
         </div>
-    </aside>
+        <div id="status-banner" class="status-banner hidden"></div>
+        <button id="stop-btn" class="stop-btn" onclick="stopNavigation()">
+            ■ End Trip
+        </button>
+    </div>
 
-    <!-- Map Container -->
-    <main class="flex-1 relative h-full bg-gray-900">
-        <div id="map" class="w-full h-full z-0"></div>
-        <!-- Notifications Overlay -->
-        <div id="notifications-container" class="absolute top-6 right-6 z-[2000] flex flex-col space-y-3 pointer-events-none w-80"></div>
-    </main>
+</div>
 
-    <!-- Scripts -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="map.js"></script>
-    <script src="controls.js"></script>
+<!-- ── Hazard panel ─────────────────────────────────────────────────────────── -->
+<div id="hazard-panel" class="panel hazard-panel">
+    <div class="panel-header">
+        <div class="panel-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Hazards
+        </div>
+    </div>
+
+    <!-- Flood tool -->
+    <div class="hz-tool-row">
+        <button id="flood-tool-btn" class="hz-btn flood-btn" onclick="activateFloodTool()">
+            💧 Add Flood Zone
+        </button>
+        <button id="slide-tool-btn" class="hz-btn slide-btn" onclick="activateLandslideTool()">
+            ⛰ Add Landslide
+        </button>
+    </div>
+
+    <!-- Severity chip picker — shown after map click for flood -->
+    <div id="severity-picker" class="hidden">
+        <p class="sev-prompt">Select flood severity:</p>
+        <div class="chip-row">
+            <button class="chip chip-mild"    onclick="confirmFloodZone('mild')">Mild</button>
+            <button class="chip chip-caution" onclick="confirmFloodZone('caution')">Caution</button>
+            <button class="chip chip-severe"  onclick="confirmFloodZone('severe')">Severe</button>
+            <button class="chip chip-blocked" onclick="confirmFloodZone('blocked')">Blocked</button>
+        </div>
+        <button class="cancel-small" onclick="cancelHazardTool()">Cancel</button>
+    </div>
+
+    <!-- Active zone list -->
+    <div id="active-zones" class="hidden">
+        <div class="field-label" style="margin:8px 0 4px">Active hazards</div>
+        <ul id="zone-list"></ul>
+    </div>
+</div>
+
+<!-- ── Map ──────────────────────────────────────────────────────────────────── -->
+<div id="map"></div>
+
+<!-- ── Toast notifications ──────────────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- Scripts — order matters: map first, then vehicle, then hazard controls -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="map.js"></script>
+<script src="vehicle.js"></script>
+<script src="hazard_controls.js"></script>
 </body>
 </html>

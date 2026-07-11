@@ -1,72 +1,261 @@
-/* Custom Map Styles */
-.leaflet-container {
-    background-color: #0b0f19; /* Match Tailwind bg-gray-900-ish */
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #eef0f3;
+    height: 100vh; width: 100vw;
+    overflow: hidden;
+    color: #1a1d23;
 }
 
-/* Map Popups (Dark Mode) */
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
-    background-color: #1f2937; /* Tailwind gray-800 */
-    color: #e5e7eb; /* Tailwind gray-200 */
-    border: 1px solid #374151; /* Tailwind gray-700 */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    border-radius: 0.5rem;
+/* ── Map ─────────────────────────────────────────────────────────────────── */
+#map { position: absolute; inset: 0; z-index: 0; }
+.leaflet-container { background: #e8ecef; }
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+.panel {
+    position: absolute;
+    z-index: 800;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(0,0,0,0.09);
+    border-radius: 14px;
+    padding: 14px;
+    width: 272px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.09), 0 1px 3px rgba(0,0,0,0.06);
+}
+#nav-panel    { top: 14px; left: 14px; }
+.hazard-panel { bottom: 14px; left: 14px; }
+
+/* ── Panel header ────────────────────────────────────────────────────────── */
+.panel-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.panel-title {
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 700; font-size: 13px; color: #1a1d23;
+    letter-spacing: 0.01em;
 }
 
-.leaflet-popup-content {
-    margin: 12px;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+/* ── WS badge ────────────────────────────────────────────────────────────── */
+.badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; }
+.badge-offline { background:#fee2e2; color:#b91c1c; }
+.badge-online  { background:#dcfce7; color:#15803d; }
+
+/* ── Setup section ───────────────────────────────────────────────────────── */
+.setup-hint {
+    font-size: 11.5px; color: #64748b;
+    margin-bottom: 10px; line-height: 1.5;
+}
+.setup-hint strong { color: #1e40af; }
+
+.coord-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 9px;
+    border-radius: 8px; border: 1.5px solid #e5e7eb;
+    background: #f8fafc;
+    margin-bottom: 6px;
+}
+.coord-icon { font-size: 10px; flex-shrink: 0; }
+.origin-icon { color: #2563eb; }
+.dest-icon   { color: #16a34a; font-size: 13px; }
+.coord-label { flex: 1; font-size: 11.5px; font-family: 'JetBrains Mono', monospace; color: #374151; }
+.coord-clear { border: none; background: none; color: #9ca3af; cursor: pointer; font-size: 12px; padding: 0 2px; }
+.coord-clear:hover { color: #ef4444; }
+
+/* ── Action buttons ──────────────────────────────────────────────────────── */
+.action-btn {
+    width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px; border-radius: 9px; border: none;
+    background: #2563eb; color: white;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; margin-top: 6px;
+    transition: background 0.15s, transform 0.1s;
+}
+.action-btn:hover:not(:disabled) { background: #1d4ed8; }
+.action-btn:active { transform: scale(0.98); }
+.action-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+.stop-btn {
+    width: 100%; padding: 8px; border-radius: 8px;
+    border: 1.5px solid #fca5a5; background: #fef2f2;
+    color: #b91c1c; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; margin-top: 10px; transition: background 0.15s;
+}
+.stop-btn:hover { background: #fee2e2; }
+
+/* ── Stats row ───────────────────────────────────────────────────────────── */
+.stats-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #f1f5f9; border-radius: 10px;
+    padding: 10px 12px; border: 1px solid #e2e8f0;
+}
+.stat-cell   { text-align: center; flex: 1; }
+.stat-val    { display: block; font-size: 19px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #1e40af; line-height: 1; }
+.stat-lbl    { display: block; font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+.stat-divider{ width: 1px; height: 28px; background: #cbd5e1; flex-shrink: 0; }
+
+/* ── Status banner ───────────────────────────────────────────────────────── */
+.status-banner {
+    margin-top: 8px; padding: 7px 10px;
+    border-radius: 8px; font-size: 12px; font-weight: 500; line-height: 1.4;
+}
+.banner-recalc  { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+.banner-stranded{ background:#fef2f2; color:#991b1b; border:1px solid #fca5a5; }
+.banner-ok      { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.banner-arrived { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+
+/* ── Hazard panel ────────────────────────────────────────────────────────── */
+.hz-tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+
+.hz-btn {
+    padding: 8px 6px; border-radius: 8px;
+    border: 1.5px dashed; font-size: 12px; font-weight: 500;
+    cursor: pointer; text-align: center; transition: all 0.15s;
+}
+.flood-btn { border-color:#93c5fd; color:#1d4ed8; background:#eff6ff; }
+.flood-btn:hover, .flood-btn.active { background:#dbeafe; border-style:solid; }
+.slide-btn { border-color:#fcd34d; color:#92400e; background:#fffbeb; }
+.slide-btn:hover, .slide-btn.active { background:#fef3c7; border-style:solid; }
+
+/* ── Severity chips ──────────────────────────────────────────────────────── */
+.sev-prompt {
+    font-size: 11px; font-weight: 600; color: #475569;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+.chip-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+.chip {
+    padding: 7px 4px; border-radius: 7px; border: none;
+    font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.12s;
+}
+.chip:hover { filter: brightness(0.94); transform: scale(0.98); }
+.chip-mild    { background:#dbeafe; color:#1e40af; }
+.chip-caution { background:#fef3c7; color:#92400e; }
+.chip-severe  { background:#fff7ed; color:#c2410c; }
+.chip-blocked { background:#fef2f2; color:#b91c1c; }
+
+.cancel-small {
+    font-size: 11px; color: #9ca3af; border: none; background: none;
+    cursor: pointer; padding: 2px 0;
+}
+.cancel-small:hover { color: #ef4444; }
+
+/* ── Active zone list ────────────────────────────────────────────────────── */
+.field-label {
+    display: block; font-size: 10px; font-weight: 600;
+    color: #6b7280; text-transform: uppercase; letter-spacing: 0.07em;
+}
+#zone-list { list-style: none; display: flex; flex-direction: column; gap: 3px; max-height: 80px; overflow-y: auto; }
+.zone-item {
+    font-size: 11px; padding: 4px 8px; border-radius: 6px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.zone-flood { background:#eff6ff; color:#1d4ed8; }
+.zone-slide { background:#fffbeb; color:#92400e; }
+.zone-remove { border:none; background:none; cursor:pointer; color:#9ca3af; font-size:13px; }
+.zone-remove:hover { color:#ef4444; }
+
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+#toast-container {
+    position: absolute; top: 14px; right: 14px;
+    z-index: 1500; display: flex; flex-direction: column; gap: 7px;
+    width: 290px; pointer-events: none;
+}
+.toast {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 11px 13px; border-radius: 10px; border: 1px solid transparent;
+    font-size: 12.5px; font-weight: 500; pointer-events: auto;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.10);
+    animation: slideIn 0.22s ease;
+}
+.toast-info    { background:#fff; border-color:#e5e7eb; color:#374151; }
+.toast-success { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
+.toast-warn    { background:#fffbeb; border-color:#fde68a; color:#92400e; }
+.toast-error   { background:#fef2f2; border-color:#fca5a5; color:#991b1b; }
+.toast.fade-out { animation: fadeOut 0.28s ease forwards; }
+.toast-icon { font-size: 15px; flex-shrink: 0; }
+
+/* ── Leaflet overrides ───────────────────────────────────────────────────── */
+.leaflet-bar a { background:#fff !important; color:#374151 !important; border-color:#d1d5db !important; font-weight:600; }
+.leaflet-bar a:hover { background:#f3f4f6 !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background:#fff; color:#1a1d23;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.09);
+    border-radius: 10px;
+}
+.leaflet-popup-content { margin: 9px 12px; font-size: 12.5px; line-height: 1.5; }
+
+/* ── Vehicle icon ────────────────────────────────────────────────────────── */
+.vehicle-wrap {
+    width: 30px; height: 30px;
+    background: #2563eb; border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; will-change: transform;
 }
 
-/* Map Zoom Controls (Dark Mode) */
-.leaflet-bar a {
-    background-color: #1f2937 !important;
-    color: #9ca3af !important;
-    border-color: #374151 !important;
-}
-.leaflet-bar a:hover {
-    background-color: #374151 !important;
-    color: #f3f4f6 !important;
-}
-
-/* Range Slider Styling */
-input[type=range] {
-    -webkit-appearance: none; 
-    background: transparent; 
-}
-input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 16px;
-    width: 16px;
-    border-radius: 50%;
-    background: #3b82f6;
-    cursor: pointer;
-    border: 2px solid #1e3a8a;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-}
-input[type=range]:disabled::-webkit-slider-thumb {
-    background: #4b5563;
-    border-color: #374151;
-    box-shadow: none;
-    cursor: not-allowed;
-}
-input[type=range]:focus {
-    outline: none; 
-}
-
-/* Custom Scrollbar for Sidebar */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #374151;
+/* ── ETA pill (floats above vehicle) ─────────────────────────────────────── */
+.eta-pill {
+    background: rgba(255,255,255,0.95);
+    border: 1px solid #e5e7eb;
     border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 11px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: #1e40af;
+    white-space: nowrap;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.10);
+    pointer-events: none;
 }
 
-/* Animations */
-.ambulance-item {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* ── Destination pin ─────────────────────────────────────────────────────── */
+.dest-pin {
+    display: flex; flex-direction: column; align-items: center;
 }
+.dest-pin-head {
+    width: 22px; height: 22px;
+    background: #16a34a; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(22,163,74,0.4);
+}
+.dest-pin-tail {
+    width: 2px; height: 8px;
+    background: #16a34a; margin-top: 0;
+}
+
+/* ── Hazard zone icons ───────────────────────────────────────────────────── */
+.hz-icon {
+    font-size: 16px; line-height: 1;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.18);
+    pointer-events: none;
+    user-select: none;
+}
+
+/* ── Route colors via CSS vars (set by vehicle.js) ───────────────────────── */
+.route-green  { stroke: #16a34a !important; }
+.route-red    { stroke: #ef4444 !important; }
+.route-gray   { stroke: #94a3b8 !important; opacity: 0.45 !important; }
+
+/* ── Cursor ──────────────────────────────────────────────────────────────── */
+.crosshair-mode, .crosshair-mode .leaflet-interactive { cursor: crosshair !important; }
+
+/* ── Utilities ───────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes slideIn { from { opacity:0; transform:translateY(-7px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeOut { to   { opacity:0; transform:translateY(-5px) scale(0.97); } }
+@keyframes spin    { to   { transform: rotate(360deg); } }
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
