@@ -1,29 +1,35 @@
-# Contracts — do not change without telling all 4 people
-
 ## POST /route
-Request:  { origin: [lat,lon], destination: [lat,lon], vehicle_type: "ambulance"|"4x4" }
-Response: { path: [[lat,lon], ...], eta_seconds: float, status: "ok"|"no_route" }
+Request:  { origin: [lat,lon], destination: [lat,lon] }
+Response: { path: [[lat,lon],...], eta_seconds: float, distance_m: float, status: "ok"|"no_route" }
 
-## GET /safe-zones
-Response: [ { name: string, type: "hospital"|"relief_camp"|"high_ground", lat: float, lon: float } ]
+## WebSocket — client to server
+{ event: "flood_update", zone: {center: [lat,lon], radius_m: number},
+  severity: "mild"|"caution"|"severe"|"blocked", timestamp: string }
 
-## POST /assign-fleet
-Request:  { incidents: [{id, lat, lon}], vehicles: [{id, lat, lon, status}] }
-Response: [ { incident_id: string, vehicle_id: string } ]
+{ event: "landslide_update", zone: {center: [lat,lon], radius_m: number},
+  timestamp: string }
 
-## WebSocket — client sends to server
-{ event: "flood_update", road_id: string, depth_cm: number, timestamp: string }
+## WebSocket — server to client
+{ event: "route_update", path: [[lat,lon],...], eta_seconds: float,
+  distance_m: float, status: "ok"|"stranded"|"arrived",
+  reroute_reason: string|null, hazard_type: "flood"|"landslide"|null }
 
-## WebSocket — server sends to client
-{ event: "route_update", vehicle_id: string, path: [[lat,lon],...], eta_seconds: float, status: "ok"|"stranded" }
+## Fixed severity -> depth mapping (flood only, backend-internal)
+mild -> 10cm (1.0x-1.5x cost)
+caution -> 25cm (3x-6x cost)
+severe -> 45cm (blocked for the fixed vehicle profile — see below)
+blocked -> 80cm (infinite cost)
 
-## Flood depth bands (fixed, do not change mid-build)
-0-15cm   -> 1.0x-1.5x cost
-15-30cm  -> 3x-6x cost
-30-60cm  -> blocked for "ambulance", high-cost-passable for "4x4"
-60cm+    -> infinite cost, blocked for ALL vehicle types
+## Landslide (fixed, no severity levels)
+Always applies the same cost as "blocked" flood severity — infinite cost.
 
-## Explicitly out of scope
-- No elevation data, no elevation API, anywhere.
-- No commercial map/routing API (no Google Maps, Mapbox, HERE).
-- No database — the road graph and flood state live in RAM only.
+## Vehicle profile
+ONE fixed profile only (no user-facing vehicle type selector).
+Use the ambulance-tier thresholds already defined:
+  0-15cm -> 1.0x-1.5x | 15-30cm -> 3x-6x | 30cm+ -> blocked
+This is now the only profile in the system — flood.py no longer branches
+on vehicle_type anywhere.
+
+## Out of scope (unchanged)
+No elevation. No fleet/allocation. No database. No commercial map API.
+No vehicle type selection.
