@@ -1,22 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Flood Navigation</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div id="map"></div>
-  
+
   <div id="reconnect-banner" class="banner hidden">Reconnecting...</div>
-  
+
   <div class="panel-left">
-    <div id="stranded-banner" class="banner error hidden" style="position: relative; left: auto; transform: none; top: auto; margin-bottom: 10px;">
+    <div id="stranded-banner" class="banner error hidden"
+      style="position: relative; left: auto; transform: none; top: auto; margin-bottom: 10px;">
       No safe route available — vehicle isolated.
       <button id="dismiss-stranded" class="banner-close">&times;</button>
     </div>
-    
+
     <!-- Card 1: Navigation -->
     <div class="card">
       <h2>Navigation</h2>
@@ -34,8 +37,9 @@
           <button id="btn-pick-dest" class="speed-btn" style="padding: 0 10px;" title="Pick on map">📍</button>
         </div>
       </div>
-      
-      <div class="input-group" style="flex-direction: row; align-items: center; justify-content: space-between; margin-top: 4px;">
+
+      <div class="input-group"
+        style="flex-direction: row; align-items: center; justify-content: space-between; margin-top: 4px;">
         <label style="margin: 0;">Simulation Speed</label>
         <div class="speed-control">
           <button id="btn-speed-1" class="speed-btn active">1x</button>
@@ -43,9 +47,9 @@
           <button id="btn-speed-50" class="speed-btn">50x</button>
         </div>
       </div>
-      
+
       <button id="btn-start-nav" class="primary-btn">Start Navigation</button>
-      
+
       <div class="stats-row">
         <div class="stat">
           <span class="stat-label">Speed</span>
@@ -64,7 +68,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Card 2: Hazard Controls -->
     <div class="card">
       <h2>Hazard Controls</h2>
@@ -73,7 +77,7 @@
         <button id="btn-hazard-landslide" class="hazard-btn landslide">Landslide Zone</button>
       </div>
       <p id="hazard-instruction" class="instruction-text">Click map to place flood zone</p>
-      
+
       <div class="active-hazards">
         <h3>Active Hazards</h3>
         <ul id="hazard-list"></ul>
@@ -92,4 +96,5 @@
   <script src="map.js"></script>
   <script src="controls.js"></script>
 </body>
+
 </html>

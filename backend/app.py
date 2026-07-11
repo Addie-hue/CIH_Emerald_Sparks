@@ -113,6 +113,7 @@ if _HAS_REALTIME and realtime_router is not None:
 class RouteRequest(BaseModel):
     origin:      list[float] = Field(..., min_length=2, max_length=2)
     destination: list[float] = Field(..., min_length=2, max_length=2)
+    vehicle_type: str = "ambulance"
 
 
 class RouteResponse(BaseModel):
@@ -138,12 +139,12 @@ async def route_endpoint(req: RouteRequest) -> RouteResponse:
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
-    result = find_route(G, req.origin, req.destination)
+    result = find_route(G, req.origin, req.destination, req.vehicle_type)
 
     return RouteResponse(
         path=result["path"],
         eta_seconds=result["eta_seconds"],
-        distance_m=result["distance_m"],
+        distance_m=result.get("distance_m", 0.0),
         status=result["status"],
     )
 
