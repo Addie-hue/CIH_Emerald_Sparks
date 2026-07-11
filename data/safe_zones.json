@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Wenlock District Hospital",
+    "type": "hospital",
+    "lat": 12.8680,
+    "lon": 74.8430
+  },
+  {
+    "name": "KMC Hospital",
+    "type": "hospital",
+    "lat": 12.8695,
+    "lon": 74.8455
+  },
+  {
+    "name": "Kadri Hills High Ground",
+    "type": "high_ground",
+    "lat": 12.8830,
+    "lon": 74.8560
+  },
+  {
+    "name": "St. Aloysius Relief Camp",
+    "type": "relief_camp",
+    "lat": 12.8725,
+    "lon": 74.8465
+  }
+]
