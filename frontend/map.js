@@ -7,6 +7,42 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
+// Localized English raster label overlay layer restricted strictly to Jammu & Kashmir and Ladakh regions
+const jkBounds = L.latLngBounds(
+  [32.0, 73.0], // Southwest boundary
+  [37.5, 80.5]  // Northeast boundary
+);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19,
+  bounds: jkBounds,
+  attribution: '© CARTO'
+}).addTo(map);
+
+// Official India Boundary Geopolitical Correction Layer (CORS-enabled jsDelivr CDN)
+fetch('https://cdn.jsdelivr.net/gh/datameet/maps@master/Country/india-composite.geojson')
+  .then(res => {
+    if (!res.ok) throw new Error('Failed to fetch India boundary data');
+    return res.json();
+  })
+  .then(geoJsonData => {
+    L.geoJSON(geoJsonData, {
+      style: {
+        color: '#876D93',
+        weight: 2.5,
+        opacity: 0.80,
+        lineCap: 'round',
+        lineJoin: 'round',
+        fillColor: 'none',
+        fillOpacity: 0
+      },
+      interactive: false
+    }).addTo(map);
+  })
+  .catch(err => {
+    console.error('Failed to load official India boundary GeoJSON overlay:', err);
+  });
+
 const layers = {
   routeLine: null,
   vehicleMarker: null,
