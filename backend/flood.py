@@ -30,16 +30,48 @@ def depth_to_multiplier(depth_cm, vehicle_type):
         # 60cm+
         return float('inf')
 
-def update_flood(graph, road_id, depth_cm):
+def update_flood(road_id, depth_cm, timestamp=None):
     """
     Updates the dictionary AND directly mutates the matching edge's weight on the graph object
     using the multiplier.
     """
+    from backend.graph import get_graph
+    try:
+        graph = get_graph()
+    except RuntimeError:
+        return
+        
     current_floods[road_id] = depth_cm
     
     mult_amb = depth_to_multiplier(depth_cm, "ambulance")
     mult_4x4 = depth_to_multiplier(depth_cm, "4x4")
     
+    if ',' in str(road_id):
+        try:
+            lat_str, lon_str = str(road_id).split(',')
+            lat, lon = float(lat_str), float(lon_str)
+            import osmnx as ox
+            # Nearest edges returns u, v, key
+            edge = ox.nearest_edges(graph, X=lon, Y=lat)
+            if edge:
+                u, v, key = edge
+                data = graph[u][v][key]
+                if 'base_weight' not in data:
+                    data['base_weight'] = data.get('travel_time', data.get('length', 1.0))
+                data['weight_ambulance'] = data['base_weight'] * mult_amb
+                data['weight_4x4'] = data['base_weight'] * mult_4x4
+                
+                # Block reverse direction too
+                if graph.has_edge(v, u, key):
+                    data_rev = graph[v][u][key]
+                    if 'base_weight' not in data_rev:
+                        data_rev['base_weight'] = data_rev.get('travel_time', data_rev.get('length', 1.0))
+                    data_rev['weight_ambulance'] = data_rev['base_weight'] * mult_amb
+                    data_rev['weight_4x4'] = data_rev['base_weight'] * mult_4x4
+        except Exception as e:
+            print(f"Error updating nearest edge for {road_id}: {e}")
+        return
+
     for u, v, k, data in graph.edges(keys=True, data=True):
         is_match = False
         osmid = data.get("osmid")

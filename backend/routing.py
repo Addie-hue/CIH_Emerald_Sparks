@@ -150,16 +150,18 @@ def find_route(
     # parallel edges (MultiDiGraph may have several edges between the same pair).
     def _edge_weight(u: int, v: int, data: dict) -> float:
         """
-        Called by NetworkX for each edge.  For MultiDiGraph, data is the dict
-        of the *best* (lowest-weight) parallel edge that NetworkX has already
-        selected — but since NetworkX calls this per parallel edge, we just
-        return the weight for this specific one and let NX minimise.
+        Called by NetworkX for each edge. For MultiDiGraph, data is the bundle
+        of parallel edges (e.g., {0: {...}, 1: {...}}).
+        We must pick the minimum cost among all passable parallel edges.
         """
-        cost = data.get(weight_key, data.get("base_weight", 1.0))
-        # Treat infinite-cost edges as absent
-        if cost == float("inf") or cost != cost:  # nan check
-            return float("inf")
-        return cost
+        min_cost = float("inf")
+        # data is the edge bundle dict {key: edge_attrs}
+        for edge_attrs in data.values():
+            cost = edge_attrs.get(weight_key, edge_attrs.get("base_weight", 1.0))
+            if cost != float("inf") and cost == cost:  # not inf, not nan
+                if cost < min_cost:
+                    min_cost = cost
+        return min_cost
 
     try:
         node_path: list[int] = nx.dijkstra_path(

@@ -1,102 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency Flood Routing Dashboard</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Flood Navigation</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body class="bg-gray-900 text-white h-screen w-screen overflow-hidden flex font-sans">
+<body>
+  <div id="map"></div>
+  
+  <div id="reconnect-banner" class="banner hidden">Reconnecting...</div>
+  
+  <div class="panel-left">
+    <div id="stranded-banner" class="banner error hidden" style="position: relative; left: auto; transform: none; top: auto; margin-bottom: 10px;">
+      No safe route available — vehicle isolated.
+      <button id="dismiss-stranded" class="banner-close">&times;</button>
+    </div>
     
-    <!-- Sidebar -->
-    <aside class="w-80 h-full bg-gray-900 border-r border-gray-800 flex flex-col shadow-2xl z-[1000] relative">
-        <div class="p-6 border-b border-gray-800 bg-gray-900">
-            <h1 class="text-xl font-bold text-blue-500 tracking-wide uppercase flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                Flood Routing
-            </h1>
-            <p class="text-xs text-gray-400 mt-1 uppercase tracking-wider">Emergency Operations Center</p>
+    <!-- Card 1: Navigation -->
+    <div class="card">
+      <h2>Navigation</h2>
+      <div class="input-group">
+        <label>Origin (Place Name or Lat,Lon)</label>
+        <div style="display:flex; gap: 4px;">
+          <input type="text" id="input-origin" placeholder="e.g. Paris" value="10.0, 20.0" style="flex:1;">
+          <button id="btn-pick-origin" class="speed-btn" style="padding: 0 10px;" title="Pick on map">📍</button>
         </div>
-
-        <div class="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar bg-gray-950/30">
-            <!-- Road Controls -->
-            <section>
-                <h2 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Selected Road Controls</h2>
-                <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm shadow-inner transition-colors duration-300" id="road-control-card">
-                    <div class="flex justify-between items-center mb-4">
-                        <span id="selected-road-name" class="text-sm font-medium text-gray-400 truncate">No Road Selected</span>
-                        <span id="depth-display" class="text-sm font-black text-blue-400 font-mono bg-blue-900/20 px-2 py-1 rounded">0 cm</span>
-                    </div>
-                    <input type="range" id="depth-slider" min="0" max="100" value="0" disabled
-                        class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-not-allowed accent-blue-500 hover:accent-blue-400 transition-all">
-                    <p class="text-[11px] text-gray-500 mt-3 leading-tight">Adjust reported water depth to trigger real-time route recalculations.</p>
-                </div>
-            </section>
-
-            <!-- Ambulances -->
-            <section>
-                <h2 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Active Ambulances</h2>
-                <ul id="ambulance-list" class="space-y-3">
-                    <li class="text-sm text-gray-600 italic bg-gray-800/20 border border-gray-800/50 rounded-xl p-4 text-center" id="no-ambulances">
-                        No active routes at this time.
-                    </li>
-                    <!-- Dynamic ambulance items will go here -->
-                </ul>
-            </section>
-
-            <!-- Emergencies -->
-            <section>
-                <h2 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Active Emergencies</h2>
-                <ul id="emergencies-list" class="space-y-3">
-                    <!-- Placeholder emergencies for UI visuals -->
-                    <li class="bg-red-950/30 border border-red-900/50 rounded-xl p-3 hover:bg-red-900/40 transition-colors">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-sm font-bold text-red-400 flex items-center gap-1">
-                                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                                EVAC-01
-                            </span>
-                            <span class="text-[10px] px-2 py-0.5 bg-red-900/80 text-red-200 rounded text-xs font-semibold tracking-wide border border-red-800">CRITICAL</span>
-                        </div>
-                        <p class="text-xs text-gray-400 leading-tight">Stranded family at Lower Bendoor due to flash flooding.</p>
-                    </li>
-                     <li class="bg-yellow-950/30 border border-yellow-900/50 rounded-xl p-3 hover:bg-yellow-900/40 transition-colors">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-sm font-bold text-yellow-400 flex items-center gap-1">
-                                <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
-                                MED-04
-                            </span>
-                            <span class="text-[10px] px-2 py-0.5 bg-yellow-900/80 text-yellow-200 rounded text-xs font-semibold tracking-wide border border-yellow-800">HIGH</span>
-                        </div>
-                        <p class="text-xs text-gray-400 leading-tight">Emergency medical supplies needed at Kankanady center.</p>
-                    </li>
-                </ul>
-            </section>
+      </div>
+      <div class="input-group">
+        <label>Destination (Place Name or Lat,Lon)</label>
+        <div style="display:flex; gap: 4px;">
+          <input type="text" id="input-destination" placeholder="e.g. Lyon" value="10.1, 20.1" style="flex:1;">
+          <button id="btn-pick-dest" class="speed-btn" style="padding: 0 10px;" title="Pick on map">📍</button>
         </div>
-        
-        <div class="p-4 border-t border-gray-800 bg-gray-900 text-[10px] text-gray-500 text-center uppercase tracking-widest flex justify-between items-center">
-            <span>System Status</span>
-            <div class="flex items-center gap-1 text-green-500">
-                <div id="connection-indicator" class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                <span id="connection-text" class="text-gray-400">Offline</span>
-            </div>
+      </div>
+      
+      <div class="input-group" style="flex-direction: row; align-items: center; justify-content: space-between; margin-top: 4px;">
+        <label style="margin: 0;">Simulation Speed</label>
+        <div class="speed-control">
+          <button id="btn-speed-1" class="speed-btn active">1x</button>
+          <button id="btn-speed-10" class="speed-btn">10x</button>
+          <button id="btn-speed-50" class="speed-btn">50x</button>
         </div>
-    </aside>
+      </div>
+      
+      <button id="btn-start-nav" class="primary-btn">Start Navigation</button>
+      
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-label">Speed</span>
+          <span class="stat-value">60 km/h</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Remaining</span>
+          <span class="stat-value" id="val-distance">-- km</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">ETA</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="stat-value" id="val-eta">-- min</span>
+            <span id="sla-indicator" class="sla-indicator hidden"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Card 2: Hazard Controls -->
+    <div class="card">
+      <h2>Hazard Controls</h2>
+      <div class="hazard-options">
+        <button id="btn-hazard-flood" class="hazard-btn flood active">Flood Zone</button>
+        <button id="btn-hazard-landslide" class="hazard-btn landslide">Landslide Zone</button>
+      </div>
+      <p id="hazard-instruction" class="instruction-text">Click map to place flood zone</p>
+      
+      <div class="active-hazards">
+        <h3>Active Hazards</h3>
+        <ul id="hazard-list"></ul>
+      </div>
+    </div>
+  </div>
 
-    <!-- Map Container -->
-    <main class="flex-1 relative h-full bg-gray-900">
-        <div id="map" class="w-full h-full z-0"></div>
-        <!-- Notifications Overlay -->
-        <div id="notifications-container" class="absolute top-6 right-6 z-[2000] flex flex-col space-y-3 pointer-events-none w-80"></div>
-    </main>
+  <div id="inline-flood-input" class="inline-popup hidden">
+    <label>Depth (cm):</label>
+    <input type="number" id="input-flood-depth" value="30">
+    <button id="btn-submit-flood" class="primary-btn" style="padding: 4px 8px; font-size: 0.85rem;">Add</button>
+    <button id="btn-cancel-flood" class="cancel-btn">Cancel</button>
+  </div>
 
-    <!-- Scripts -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="map.js"></script>
-    <script src="controls.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="map.js"></script>
+  <script src="controls.js"></script>
 </body>
 </html>

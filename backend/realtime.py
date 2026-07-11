@@ -84,6 +84,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     debounce_ms=300,
                     callback=process_flood_update
                 )
+            elif event_type == "update_location":
+                try:
+                    from backend.active_routes import update_vehicle_state
+                    update_vehicle_state(
+                        vehicle_id=data.get("vehicle_id"),
+                        position=data.get("position"),
+                        path=data.get("path"),
+                        destination=data.get("destination"),
+                        vehicle_type="ambulance"
+                    )
+                except ImportError:
+                    pass
             else:
                 logger.warning(f"Unknown event type received: {event_type}")
                 
