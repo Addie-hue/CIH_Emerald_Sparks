@@ -1,6 +1,6 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 networkx==3.3
-osmnx==1.9.4
+osmnx==2.0.1
 websockets==13.0
 python-multipart==0.0.9
