@@ -120,7 +120,7 @@ def find_route(
         "status":      "ok" | "no_route"
     }
     """
-    _NO_ROUTE = {"path": [], "eta_seconds": 0.0, "status": "no_route"}
+    _NO_ROUTE = {"path": [], "eta_seconds": 0.0, "distance_m": 0.0, "status": "no_route"}
 
     # ── 1. Validate inputs ─────────────────────────────────────────────────────
     if len(origin) != 2 or len(destination) != 2:
@@ -203,8 +203,16 @@ def find_route(
     # ── 6. Compute ETA ─────────────────────────────────────────────────────────
     eta = _path_eta(graph, node_path, weight_key)
 
+    # ── 7. Compute Distance ────────────────────────────────────────────────────
+    total_length = 0.0
+    for u, v in zip(node_path[:-1], node_path[1:]):
+        bundle = graph[u][v]
+        # Pick the edge with the minimum length
+        total_length += min(data.get("length", 0.0) for data in bundle.values())
+
     return {
         "path":        path_coords,
         "eta_seconds": round(eta, 2),
+        "distance_m":  round(total_length, 2),
         "status":      "ok",
     }
