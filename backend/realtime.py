@@ -36,7 +36,11 @@ async def process_flood_update(payload: dict):
     
     # 1. Update the internal flood state (Person B's code)
     try:
-        update_flood(road_id, depth_cm, timestamp)
+        err_msg = update_flood(road_id, depth_cm, timestamp)
+        if err_msg:
+            # Broadcast the error back to the client that sent the malicious/invalid request
+            await manager.broadcast_json({"event": "hazard_error", "message": err_msg, "road_id": road_id})
+            return
     except Exception as e:
         logger.error(f"Error in update_flood: {e}")
         return

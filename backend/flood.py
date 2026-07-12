@@ -50,24 +50,34 @@ def update_flood(road_id, depth_cm, timestamp=None):
         try:
             lat_str, lon_str = str(road_id).split(',')
             lat, lon = float(lat_str), float(lon_str)
-            import osmnx as ox
-            # Nearest edges returns u, v, key
-            edge = ox.nearest_edges(graph, X=lon, Y=lat)
-            if edge:
-                u, v, key = edge
-                data = graph[u][v][key]
-                if 'base_weight' not in data:
-                    data['base_weight'] = data.get('travel_time', data.get('length', 1.0))
-                data['weight_ambulance'] = data['base_weight'] * mult_amb
-                data['weight_4x4'] = data['base_weight'] * mult_4x4
-                
-                # Block reverse direction too
-                if graph.has_edge(v, u, key):
-                    data_rev = graph[v][u][key]
-                    if 'base_weight' not in data_rev:
-                        data_rev['base_weight'] = data_rev.get('travel_time', data_rev.get('length', 1.0))
-                    data_rev['weight_ambulance'] = data_rev['base_weight'] * mult_amb
-                    data_rev['weight_4x4'] = data_rev['base_weight'] * mult_4x4
+            import math
+            
+            def haversine(lat1, lon1, lat2, lon2):
+                R = 6371000
+                phi1, phi2 = math.radians(lat1), math.radians(lat2)
+                dphi = math.radians(lat2 - lat1)
+                dlam = math.radians(lon2 - lon1)
+                a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
+                return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            
+            close_nodes = set()
+            for n, ndata in graph.nodes(data=True):
+                n_lat, n_lon = ndata.get('y'), ndata.get('x')
+                if n_lat is not None and n_lon is not None:
+                    if haversine(lat, lon, n_lat, n_lon) <= 70:
+                        close_nodes.add(n)
+                        
+            if not close_nodes and depth_cm > 0:
+                if depth_cm == 999:
+                    return "Invalid location for a landslide zone"
+                return "Cannot place a hazard here — no road at this location"
+            
+            for u, v, key, data in graph.edges(keys=True, data=True):
+                if u in close_nodes or v in close_nodes:
+                    if 'base_weight' not in data:
+                        data['base_weight'] = data.get('travel_time', data.get('length', 1.0))
+                    data['weight_ambulance'] = data['base_weight'] * mult_amb
+                    data['weight_4x4'] = data['base_weight'] * mult_4x4
         except Exception as e:
             print(f"Error updating nearest edge for {road_id}: {e}")
         return

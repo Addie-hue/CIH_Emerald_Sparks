@@ -64,58 +64,29 @@ def recheck_all_active_routes():
     updated_routes = []
 
     for vehicle_id, info in active_vehicles.items():
-        if info.get('status') == 'stranded':
-            continue
-            
-        current_path = info.get('current_path', [])
-        if not current_path or len(current_path) < 2:
-            continue
-            
         vehicle_type = info.get('vehicle_type', 'ambulance')
         
-        path_blocked_or_costly = False
-        current_cost = 0.0
+        # Always try to find a fresh route (in case a hazard was removed making a better path available)
+        route_res = find_route(graph, info['current_position'], info['destination'], vehicle_type)
         
-        nodes = []
-        for point in current_path:
-            lat, lon = point[0], point[1]
-            nid = get_node_id_cached(graph, lat, lon)
-            if nid is not None:
-                nodes.append(nid)
-                
-        if len(nodes) == len(current_path):
-            for i in range(len(nodes) - 1):
-                u = nodes[i]
-                v = nodes[i+1]
-                edge_cost = get_edge_weight(graph, u, v, vehicle_type)
-                if edge_cost == float('inf'):
-                    path_blocked_or_costly = True
-                    break
-                current_cost += edge_cost
-                
-            old_cost = info.get('current_path_cost', 0)
-            if not path_blocked_or_costly and old_cost > 0 and current_cost > old_cost * 1.5:
-                path_blocked_or_costly = True
+        # Calculate current path cost to see if the new path is actually better or if we are still stranded
+        old_path = info.get('current_path', [])
+        old_cost = info.get('current_path_cost', float('inf'))
+        
+        if route_res.get('status') == 'ok' and route_res.get('path'):
+            info['current_path'] = route_res['path']
+            info['status'] = 'ok'
+            info['current_path_cost'] = route_res.get('eta_seconds', 0.0)
         else:
-            path_blocked_or_costly = True
+            info['status'] = 'stranded'
+            info['current_path'] = []
+            info['current_path_cost'] = 0.0
             
-        if path_blocked_or_costly:
-            route_res = find_route(graph, info['current_position'], info['destination'], vehicle_type)
-            
-            if route_res.get('status') == 'ok' and route_res.get('path'):
-                info['current_path'] = route_res['path']
-                info['status'] = 'ok'
-                info['current_path_cost'] = route_res.get('eta_seconds', current_cost)
-            else:
-                info['status'] = 'stranded'
-                info['current_path'] = []
-                info['current_path_cost'] = 0.0
-                
-            updated_routes.append({
-                "vehicle_id": vehicle_id,
-                "path": info['current_path'],
-                "eta_seconds": info['current_path_cost'],
-                "status": info['status']
-            })
+        updated_routes.append({
+            "vehicle_id": vehicle_id,
+            "path": info['current_path'],
+            "eta_seconds": info['current_path_cost'],
+            "status": info['status']
+        })
             
     return updated_routes

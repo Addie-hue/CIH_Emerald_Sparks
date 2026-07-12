@@ -16,7 +16,7 @@
   <div class="panel-left">
     <div id="stranded-banner" class="banner error hidden"
       style="position: relative; left: auto; transform: none; top: auto; margin-bottom: 10px;">
-      No safe route available — vehicle isolated.
+      No road route available — vehicle isolated. Recommend dispatching by boat or air rescue.
       <button id="dismiss-stranded" class="banner-close">&times;</button>
     </div>
 
@@ -29,6 +29,7 @@
           <input type="text" id="input-origin" placeholder="e.g. Paris" value="10.0, 20.0" style="flex:1;">
           <button id="btn-pick-origin" class="speed-btn" style="padding: 0 10px;" title="Pick on map">📍</button>
         </div>
+        <div class="input-message" id="msg-origin"></div>
       </div>
       <div class="input-group">
         <label>Destination (Place Name or Lat,Lon)</label>
@@ -36,6 +37,7 @@
           <input type="text" id="input-destination" placeholder="e.g. Lyon" value="10.1, 20.1" style="flex:1;">
           <button id="btn-pick-dest" class="speed-btn" style="padding: 0 10px;" title="Pick on map">📍</button>
         </div>
+        <div class="input-message" id="msg-dest"></div>
       </div>
 
       <div class="input-group"
@@ -48,7 +50,10 @@
         </div>
       </div>
 
-      <button id="btn-start-nav" class="primary-btn">Start Navigation</button>
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-start-nav" class="primary-btn" style="flex: 1;">Start Navigation</button>
+        <button id="btn-stop-nav" class="secondary-btn hidden" style="flex: 1; background: var(--error-red); color: white;">Stop Navigation</button>
+      </div>
 
       <div class="stats-row">
         <div class="stat">
@@ -63,7 +68,6 @@
           <span class="stat-label">ETA</span>
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-value" id="val-eta">-- min</span>
-            <span id="sla-indicator" class="sla-indicator hidden"></span>
           </div>
         </div>
       </div>
@@ -85,16 +89,21 @@
     </div>
   </div>
 
-  <div id="inline-flood-input" class="inline-popup hidden">
-    <label>Depth (cm):</label>
-    <input type="number" id="input-flood-depth" value="30">
-    <button id="btn-submit-flood" class="primary-btn" style="padding: 4px 8px; font-size: 0.85rem;">Add</button>
-    <button id="btn-cancel-flood" class="cancel-btn">Cancel</button>
+  <div id="inline-flood-input" class="inline-popup hidden" style="flex-direction: column; gap: 8px; width: max-content;">
+    <label style="margin: 0; font-weight: 600;">Select Flood Severity:</label>
+    <div style="display: flex; gap: 6px;">
+      <button id="btn-severity-yellow" class="severity-btn sev-yellow">Yellow</button>
+      <button id="btn-severity-orange" class="severity-btn sev-orange">Orange</button>
+      <button id="btn-severity-red" class="severity-btn sev-red">Red</button>
+      <button id="btn-cancel-flood" class="cancel-btn" style="padding: 6px 12px;">Cancel</button>
+    </div>
   </div>
 
+  <div id="toast-container" class="toast-container"></div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="map.js"></script>
-  <script src="controls.js"></script>
+  <script src="map.js?v=3"></script>
+  <script src="controls.js?v=3"></script>
 </body>
 
 </html>

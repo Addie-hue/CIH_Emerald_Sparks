@@ -90,14 +90,15 @@ _graph: nx.MultiDiGraph | None = None  # singleton, populated at import time
 
 def _annotate_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     """
-    Walk every edge and write base_weight + weight (single fixed profile).
-    flood.py mutates 'weight' in place when a hazard zone is applied.
+    Walk every edge and write base_weight + weight_ambulance + weight_4x4.
+    flood.py mutates these in place when a hazard zone is applied.
     This is idempotent — calling it twice is safe.
     """
     for _u, _v, _k, data in G.edges(keys=True, data=True):
         bw = _compute_base_weight(data)
         data["base_weight"] = bw
-        data["weight"]      = bw   # flood.py raises this for hazard zones
+        data["weight_ambulance"] = bw
+        data["weight_4x4"] = bw
     logger.debug("Graph annotation complete — %d edges processed.", G.number_of_edges())
     return G
 

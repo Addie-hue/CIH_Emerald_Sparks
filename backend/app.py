@@ -158,6 +158,52 @@ class StartTripRequest(BaseModel):
     distance_m:  float
     destination: list[float] = Field(..., min_length=2, max_length=2)
 
+class ValidateHazardRequest(BaseModel):
+    lat: float
+    lon: float
+    hazard_type: str = "flood"
+    radius: float = 50.0
+
+class ValidateHazardResponse(BaseModel):
+    valid: bool
+    message: str | None = None
+
+@app.post("/validate_hazard", response_model=ValidateHazardResponse, summary="Check if hazard coords are within simulation area")
+async def validate_hazard_endpoint(req: ValidateHazardRequest):
+    try:
+        G = get_graph()
+        import math
+        
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371000
+            phi1, phi2 = math.radians(lat1), math.radians(lat2)
+            dphi = math.radians(lat2 - lat1)
+            dlam = math.radians(lon2 - lon1)
+            a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
+            return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            
+        min_dist = float('inf')
+        for n, ndata in G.nodes(data=True):
+            n_lat, n_lon = ndata.get('y'), ndata.get('x')
+            if n_lat is not None and n_lon is not None:
+                dist = haversine(req.lat, req.lon, n_lat, n_lon)
+                if dist < min_dist:
+                    min_dist = dist
+                    
+        # Add 20m buffer to the hazard radius for "reasonable snap distance"
+        max_dist = req.radius + 20.0
+        
+        if min_dist > max_dist:
+            msg = f"Cannot place a hazard here — no road at this location"
+            if req.hazard_type == "landslide":
+                msg = "Invalid location for a landslide zone"
+            return {"valid": False, "message": msg}
+            
+        return {"valid": True}
+    except Exception as exc:
+        logger.error(f"Validation error: {exc}")
+        return {"valid": False, "message": "Failed to validate location"}
+
 @app.post("/start-trip", summary="Begin vehicle trip tracking")
 async def start_trip_endpoint(req: StartTripRequest):
     from backend.vehicle_sim import start_trip as _start

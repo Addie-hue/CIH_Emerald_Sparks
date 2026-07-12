@@ -19,6 +19,24 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.
   attribution: '© CARTO'
 }).addTo(map);
 
+// Dataset bounds visualization
+const datasetBounds = [
+  [12.75, 74.75], // Southwest [South, West]
+  [13.05, 74.95]  // Northeast [North, East]
+];
+
+L.rectangle(datasetBounds, {
+  color: '#0d6efd',
+  weight: 2,
+  fillColor: '#0d6efd',
+  fillOpacity: 0.03,
+  dashArray: '5, 10'
+}).addTo(map).bindTooltip("Simulation Dataset Boundary", { permanent: false, sticky: true });
+
+// Center map to dataset bounds
+map.fitBounds(datasetBounds);
+
+
 // Official India Boundary Geopolitical Correction Layer (CORS-enabled jsDelivr CDN)
 fetch('https://cdn.jsdelivr.net/gh/datameet/maps@master/Country/india-composite.geojson')
   .then(res => {
@@ -63,22 +81,20 @@ const vehicleWarningIcon = L.divIcon({
   iconAnchor: [12, 12]
 });
 
-function drawRoute(pathCoords, isStranded) {
+function drawRoute(pathCoords, isStranded, skipFitBounds = false) {
   if (layers.routeLine) {
     map.removeLayer(layers.routeLine);
     layers.routeLine = null;
   }
   
   if (pathCoords && pathCoords.length > 0) {
-    // pathCoords is expected to be array of [lat, lon]
     const color = isStranded ? 'var(--error-red)' : 'var(--accent-blue)';
     layers.routeLine = L.polyline(pathCoords, { color: color, weight: 6, opacity: 0.8 }).addTo(map);
     
-    // Only fit bounds if it's the first time or we significantly change, but fitting every update might be jarring.
-    // For demo purposes, fitting bounds is fine.
-    map.fitBounds(layers.routeLine.getBounds(), { padding: [50, 50], maxZoom: 16 });
+    if (!skipFitBounds) {
+      map.fitBounds(layers.routeLine.getBounds(), { padding: [50, 50], maxZoom: 16 });
+    }
     
-    // Update vehicle marker at origin (first coordinate of path)
     updateVehicleMarker(pathCoords[0], isStranded);
   } else if (isStranded && layers.vehicleMarker) {
     // Path might be empty if fully stranded, just update marker to warning
@@ -99,8 +115,11 @@ function updateVehicleMarker(coord, isStranded) {
 function addHazardMarker(hazard) {
   let color, label;
   if (hazard.type === 'flood') {
-    color = 'var(--accent-blue)';
-    label = `${hazard.depth}cm`;
+    if (hazard.severity === 'Yellow') color = '#eab308';
+    else if (hazard.severity === 'Orange') color = '#f97316';
+    else if (hazard.severity === 'Red') color = '#ef4444';
+    else color = 'var(--accent-blue)';
+    label = hazard.severity || `${hazard.depth}cm`;
   } else {
     color = 'var(--accent-amber)';
     label = ''; // No depth for landslides

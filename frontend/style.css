@@ -143,6 +143,25 @@ body {
     background: var(--accent-blue-hover);
 }
 
+.severity-btn {
+    padding: 6px 12px;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-size: 0.9rem;
+}
+
+.severity-btn:hover {
+    opacity: 0.8;
+}
+
+.sev-yellow { background: #eab308; }
+.sev-orange { background: #f97316; }
+.sev-red { background: #ef4444; }
+
 .primary-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -374,4 +393,41 @@ body {
 .inline-popup input:focus {
     outline: none;
     border-color: var(--accent-blue);
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10000;
+}
+
+.toast-msg {
+  background: var(--error-red);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  font-weight: 500;
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.input-message {
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 14px;
+}
+.input-message.success {
+  color: var(--success-green);
+}
+.input-message.error {
+  color: var(--error-red);
 }

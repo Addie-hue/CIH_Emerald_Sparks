@@ -27,14 +27,14 @@ const els = {
   btnStartNav: document.getElementById('btn-start-nav'),
   valDistance: document.getElementById('val-distance'),
   valEta: document.getElementById('val-eta'),
-  slaIndicator: document.getElementById('sla-indicator'),
   btnFlood: document.getElementById('btn-hazard-flood'),
   btnLandslide: document.getElementById('btn-hazard-landslide'),
   hazardInstruction: document.getElementById('hazard-instruction'),
   hazardList: document.getElementById('hazard-list'),
   inlinePopup: document.getElementById('inline-flood-input'),
-  inputFloodDepth: document.getElementById('input-flood-depth'),
-  btnSubmitFlood: document.getElementById('btn-submit-flood'),
+  btnSeverityYellow: document.getElementById('btn-severity-yellow'),
+  btnSeverityOrange: document.getElementById('btn-severity-orange'),
+  btnSeverityRed: document.getElementById('btn-severity-red'),
   btnCancelFlood: document.getElementById('btn-cancel-flood'),
   reconnectBanner: document.getElementById('reconnect-banner'),
   strandedBanner: document.getElementById('stranded-banner'),
@@ -45,7 +45,10 @@ const els = {
     document.getElementById('btn-speed-50')
   ],
   btnPickOrigin: document.getElementById('btn-pick-origin'),
-  btnPickDest: document.getElementById('btn-pick-dest')
+  btnPickDest: document.getElementById('btn-pick-dest'),
+  btnStopNav: document.getElementById('btn-stop-nav'),
+  msgOrigin: document.getElementById('msg-origin'),
+  msgDest: document.getElementById('msg-dest')
 };
 
 // --- Map Pickers ---
@@ -55,17 +58,39 @@ els.btnPickDest.addEventListener('click', () => setHazardType('pick_dest'));
 // --- Hazard Placement ---
 let pendingHazardLocation = null;
 
-window.appMap.map.on('click', (e) => {
+window.appMap.map.on('click', async (e) => {
   const { lat, lng } = e.latlng;
   
   if (state.activeHazardType === 'pick_origin') {
     els.origin.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     setHazardType('flood'); // Reset to default mode
+    validateLocationField('origin');
     return;
   } else if (state.activeHazardType === 'pick_dest') {
     els.destination.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     setHazardType('flood'); // Reset to default mode
+    validateLocationField('dest');
     return;
+  }
+  
+  if (state.activeHazardType === 'flood' || state.activeHazardType === 'landslide') {
+    try {
+      const res = await fetch('http://localhost:8000/validate_hazard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lon: lng, hazard_type: state.activeHazardType })
+      });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data = await res.json();
+      if (!data.valid) {
+        showToast(data.message || 'Invalid location for hazard');
+        return;
+      }
+    } catch (err) {
+      console.error('Validation fetch error:', err);
+      showToast('Validation server unreachable.');
+      return;
+    }
   }
   
   if (state.activeHazardType === 'flood') {
@@ -77,7 +102,6 @@ window.appMap.map.on('click', (e) => {
     els.inlinePopup.style.left = `${x}px`;
     els.inlinePopup.style.top = `${y}px`;
     els.inlinePopup.classList.remove('hidden');
-    els.inputFloodDepth.focus();
   } else if (state.activeHazardType === 'landslide') {
     createHazard({
       id: `hz_${Date.now()}`,
@@ -89,9 +113,8 @@ window.appMap.map.on('click', (e) => {
   }
 });
 
-els.btnSubmitFlood.addEventListener('click', () => {
+function addFloodHazard(depth, severity) {
   if (!pendingHazardLocation) return;
-  const depth = parseInt(els.inputFloodDepth.value, 10) || 30;
   
   createHazard({
     id: `hz_${Date.now()}`,
@@ -99,17 +122,34 @@ els.btnSubmitFlood.addEventListener('click', () => {
     lat: pendingHazardLocation.lat,
     lon: pendingHazardLocation.lon,
     depth: depth,
+    severity: severity,
     radius: 50
   });
   
   closeInlinePopup();
-});
+}
+
+els.btnSeverityYellow.addEventListener('click', () => addFloodHazard(12, 'Yellow'));
+els.btnSeverityOrange.addEventListener('click', () => addFloodHazard(30, 'Orange'));
+els.btnSeverityRed.addEventListener('click', () => addFloodHazard(55, 'Red'));
 
 els.btnCancelFlood.addEventListener('click', closeInlinePopup);
 
 function closeInlinePopup() {
   els.inlinePopup.classList.add('hidden');
   pendingHazardLocation = null;
+}
+
+function showToast(message) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast-msg';
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.remove();
+  }, 4000);
 }
 
 function createHazard(hz) {
@@ -143,11 +183,20 @@ function renderHazardList() {
   state.hazards.forEach((hz) => {
     const li = document.createElement('li');
     li.className = 'hazard-item';
-    const desc = hz.type === 'flood' ? `Flood (${hz.depth}cm)` : 'Landslide';
+    const isFlood = hz.type === 'flood';
+    let desc = isFlood ? `Flood - ${hz.severity || 'Unknown'}` : 'Landslide';
+    let color = 'var(--accent-amber)'; // Default landslide color
+    
+    if (isFlood) {
+      if (hz.severity === 'Yellow') color = '#eab308';
+      else if (hz.severity === 'Orange') color = '#f97316';
+      else if (hz.severity === 'Red') color = '#ef4444';
+      else color = 'var(--accent-blue)';
+    }
       
     li.innerHTML = `
       <span style="display:flex; align-items:center; gap:8px;">
-        <span style="color:${hz.type === 'flood' ? 'var(--accent-blue)' : 'var(--accent-amber)'}; font-size: 1.2rem;">●</span>
+        <span style="color:${color}; font-size: 1.2rem;">●</span>
         ${desc}
       </span>
       <button class="remove-btn" data-id="${hz.id}">&times;</button>
@@ -224,23 +273,121 @@ async function geocode(input) {
   return null;
 }
 
-// --- Navigation & Simulation ---
-els.btnStartNav.addEventListener('click', async () => {
-  els.btnStartNav.textContent = 'Resolving locations...';
-  els.btnStartNav.disabled = true;
+let originMarker = null;
+let destMarker = null;
+
+function isWithinMangalore(coords) {
+  const [lat, lon] = coords;
+  return lat >= 12.75 && lat <= 13.05 && lon >= 74.75 && lon <= 74.95;
+}
+
+async function validateLocationField(type) {
+  const isOrigin = type === 'origin';
+  const inputEl = isOrigin ? els.origin : els.destination;
+  const msgEl = isOrigin ? els.msgOrigin : els.msgDest;
+  const val = inputEl.value.trim();
   
-  const originParts = await geocode(els.origin.value);
-  const destParts = await geocode(els.destination.value);
-  
-  if (!originParts || !destParts) {
-    alert('Could not resolve location names or coordinates. Please try again.');
-    els.btnStartNav.textContent = 'Start Navigation';
-    els.btnStartNav.disabled = false;
-    return;
+  if (!val) {
+    msgEl.textContent = '';
+    msgEl.className = 'input-message';
+    if (isOrigin && originMarker) { originMarker.remove(); originMarker = null; }
+    if (!isOrigin && destMarker) { destMarker.remove(); destMarker = null; }
+    updateStartButtonState();
+    return null;
   }
   
+  msgEl.textContent = 'Resolving...';
+  msgEl.className = 'input-message';
+  
+  // Notice we now just use geocode which returns [lat, lon] safely
+  const coords = await geocode(val);
+  
+  if (!coords) {
+    msgEl.textContent = 'Could not find this location.';
+    msgEl.className = 'input-message error';
+    if (isOrigin && originMarker) { originMarker.remove(); originMarker = null; }
+    if (!isOrigin && destMarker) { destMarker.remove(); destMarker = null; }
+    updateStartButtonState();
+    return null;
+  }
+  
+  if (!isWithinMangalore(coords)) {
+    msgEl.textContent = 'Location is outside Mangalore coverage area.';
+    msgEl.className = 'input-message error';
+    if (isOrigin && originMarker) { originMarker.remove(); originMarker = null; }
+    if (!isOrigin && destMarker) { destMarker.remove(); destMarker = null; }
+    updateStartButtonState();
+    return null;
+  }
+  
+  msgEl.textContent = `${isOrigin ? 'Origin' : 'Destination'} set: ${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
+  msgEl.className = 'input-message success';
+  
+  const color = isOrigin ? '#10b981' : '#ef4444'; // green or red
+  const markerIcon = L.divIcon({
+    className: 'custom-pin',
+    html: `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.4);"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+  
+  if (isOrigin) {
+    if (originMarker) originMarker.remove();
+    originMarker = L.marker([coords[0], coords[1]], {icon: markerIcon}).addTo(window.appMap.map);
+  } else {
+    if (destMarker) destMarker.remove();
+    destMarker = L.marker([coords[0], coords[1]], {icon: markerIcon}).addTo(window.appMap.map);
+  }
+  
+  updateStartButtonState();
+  return coords;
+}
+
+function updateStartButtonState() {
+  const originSuccess = els.msgOrigin.classList.contains('success');
+  const destSuccess = els.msgDest.classList.contains('success');
+  
+  if (originSuccess && destSuccess && originMarker && destMarker) {
+    const oCoords = originMarker.getLatLng();
+    const dCoords = destMarker.getLatLng();
+    // Using correct function getHaversineDistance this time!
+    const dist = getHaversineDistance(oCoords.lat, oCoords.lng, dCoords.lat, dCoords.lng);
+    
+    if (dist < 20) {
+      els.msgDest.textContent = 'Origin and destination cannot be the same location';
+      els.msgDest.className = 'input-message error';
+      els.btnStartNav.disabled = true;
+    } else {
+      els.btnStartNav.disabled = false;
+    }
+  } else {
+    els.btnStartNav.disabled = true;
+  }
+}
+
+els.origin.addEventListener('blur', () => validateLocationField('origin'));
+els.destination.addEventListener('blur', () => validateLocationField('dest'));
+els.origin.addEventListener('keyup', (e) => { if(e.key === 'Enter') validateLocationField('origin'); });
+els.destination.addEventListener('keyup', (e) => { if(e.key === 'Enter') validateLocationField('dest'); });
+
+// Initialize validation
+setTimeout(() => {
+  validateLocationField('origin');
+  validateLocationField('dest');
+}, 500);
+
+// --- Navigation & Simulation ---
+els.btnStartNav.addEventListener('click', async () => {
+  if (els.btnStartNav.disabled) return;
   els.btnStartNav.textContent = 'Routing...';
+  els.btnStartNav.disabled = true;
+  
+  const originParts = [originMarker.getLatLng().lat, originMarker.getLatLng().lng];
+  const destParts = [destMarker.getLatLng().lat, destMarker.getLatLng().lng];
+  
   state.destination = destParts;
+  els.btnStopNav.classList.remove('hidden');
+  els.btnStartNav.classList.add('hidden');
   
   try {
     const res = await fetch('http://localhost:8000/route', {
@@ -270,10 +417,31 @@ els.btnStartNav.addEventListener('click', async () => {
   } catch (err) {
     console.error('Routing failed:', err);
     alert('Failed to calculate route. Check backend connection.');
+    els.btnStartNav.classList.remove('hidden');
+    els.btnStopNav.classList.add('hidden');
   } finally {
     els.btnStartNav.textContent = 'Start Navigation';
     els.btnStartNav.disabled = false;
   }
+});
+
+els.btnStopNav.addEventListener('click', () => {
+  stopSimulation();
+  if (window.appMap.routeLayer) {
+    window.appMap.map.removeLayer(window.appMap.routeLayer);
+    window.appMap.routeLayer = null;
+  }
+  if (window.appMap.vehicleMarker) {
+    window.appMap.map.removeLayer(window.appMap.vehicleMarker);
+    window.appMap.vehicleMarker = null;
+  }
+  els.btnStartNav.textContent = 'Start Navigation';
+  els.btnStartNav.disabled = false;
+  els.btnStartNav.classList.remove('hidden');
+  els.btnStopNav.classList.add('hidden');
+  els.valDistance.textContent = '-- km';
+  els.valEta.textContent = '-- min';
+  els.valEta.style.color = '';
 });
 
 function handleRouteResponse(data) {
@@ -293,8 +461,12 @@ function handleRouteResponse(data) {
     stopSimulation();
     els.strandedBanner.classList.remove('hidden');
     els.valEta.textContent = '-- min';
+    els.valEta.style.color = '';
     els.valDistance.textContent = '-- km';
-    els.slaIndicator.classList.add('hidden');
+    els.btnStartNav.textContent = 'Start Navigation';
+    els.btnStartNav.disabled = false;
+    els.btnStartNav.classList.remove('hidden');
+    els.btnStopNav.classList.add('hidden');
   } else {
     els.strandedBanner.classList.add('hidden');
     updateStatsUI(state.currentPathCost);
@@ -306,17 +478,32 @@ function updateStatsUI(etaSeconds) {
   const etaMin = Math.round(etaSeconds / 60);
   els.valEta.textContent = `${etaMin} min`;
   
-  // Calculate remaining distance in km approx
-  const distKm = (etaMin * 1.0).toFixed(1); // Assuming 60km/h
+  // Calculate remaining distance in km based on path
+  let remainingDist = 0;
+  if (state.currentPath && state.pathIndex < state.currentPath.length) {
+    // Distance from current position to the next node
+    if (state.pathIndex < state.currentPath.length - 1) {
+      remainingDist += getHaversineDistance(
+        state.currentLat, state.currentLon,
+        state.currentPath[state.pathIndex + 1][0], state.currentPath[state.pathIndex + 1][1]
+      );
+    }
+    // Distance for the rest of the path
+    for (let i = state.pathIndex + 1; i < state.currentPath.length - 1; i++) {
+      remainingDist += getHaversineDistance(
+        state.currentPath[i][0], state.currentPath[i][1],
+        state.currentPath[i+1][0], state.currentPath[i+1][1]
+      );
+    }
+  }
+  
+  const distKm = (remainingDist / 1000).toFixed(1);
   els.valDistance.textContent = `${distKm} km`;
   
-  els.slaIndicator.classList.remove('hidden', 'success', 'warning');
-  if (etaMin <= 15) {
-    els.slaIndicator.classList.add('success');
-    els.slaIndicator.textContent = ''; 
+  if (etaMin > 15) {
+    els.valEta.style.color = 'var(--error-red)';
   } else {
-    els.slaIndicator.classList.add('warning');
-    els.slaIndicator.textContent = 'Exceeds 15-min response target';
+    els.valEta.style.color = '';
   }
 }
 
@@ -327,7 +514,7 @@ els.dismissStranded.addEventListener('click', () => {
 // -- Movement Loop --
 function getHaversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // metres
-  const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+  const φ1 = lat1 * Math.PI/180;
   const φ2 = lat2 * Math.PI/180;
   const Δφ = (lat2-lat1) * Math.PI/180;
   const Δλ = (lon2-lon1) * Math.PI/180;
@@ -338,6 +525,7 @@ function getHaversineDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c; 
 }
+
 
 function startSimulation() {
   if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
@@ -388,6 +576,12 @@ function simulationLoop(timestamp) {
   
   window.appMap.updateVehicleMarker([state.currentLat, state.currentLon]);
   
+  // Update the drawn route to only show the remaining path from the vehicle's current position
+  if (state.currentPath && state.currentPath.length > 0) {
+      const remainingPath = [[state.currentLat, state.currentLon], ...state.currentPath.slice(state.pathIndex + 1)];
+      window.appMap.drawRoute(remainingPath, false, true); // true = skip fitBounds
+  }
+  
   // Calculate remaining ETA dynamically
   const dtSimulated = dtSeconds * state.simulationSpeed;
   state.currentPathCost = Math.max(0, state.currentPathCost - dtSimulated);
@@ -401,6 +595,10 @@ function simulationLoop(timestamp) {
   
   if (state.pathIndex >= state.currentPath.length - 1) {
     stopSimulation(); // Reached destination
+    els.btnStartNav.textContent = 'Start Navigation';
+    els.btnStartNav.disabled = false;
+    els.btnStartNav.classList.remove('hidden');
+    els.btnStopNav.classList.add('hidden');
   } else {
     state.animationFrameId = requestAnimationFrame(simulationLoop);
   }
@@ -437,6 +635,20 @@ function connectWebSocket() {
         if (!data.vehicle_id || data.vehicle_id === state.vehicleId) {
           handleRouteResponse(data);
         }
+      } else if (data.event === 'hazard_error') {
+        showToast(data.message || 'Hazard validation failed');
+        if (data.road_id) {
+          // Find and remove the optimistic hazard if it exists
+          const latlon = data.road_id.split(',');
+          if (latlon.length === 2) {
+            const lat = parseFloat(latlon[0]);
+            const lon = parseFloat(latlon[1]);
+            const hz = state.hazards.find(h => h.lat === lat && h.lon === lon);
+            if (hz) {
+              removeHazard(hz.id);
+            }
+          }
+        }
       }
     } catch(e) {
       console.error("Failed to parse WS message", e);
@@ -457,3 +669,16 @@ function connectWebSocket() {
 }
 
 connectWebSocket();
+
+// --- Toast Messages ---
+function showToast(msg) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'toast-msg';
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => {
+    if (el.parentNode) el.parentNode.removeChild(el);
+  }, 4000);
+}
