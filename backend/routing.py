@@ -196,9 +196,29 @@ def find_route(
             return _NO_ROUTE
 
     # ── 5. Convert node IDs → [lat, lon] coordinates ──────────────────────────
-    path_coords: list[list[float]] = [
-        list(_node_latlon(graph, n)) for n in node_path
-    ]
+    path_coords: list[list[float]] = []
+    if len(node_path) == 1:
+        path_coords.append(list(_node_latlon(graph, node_path[0])))
+    else:
+        for u, v in zip(node_path[:-1], node_path[1:]):
+            bundle = graph[u][v]
+            # Pick the edge with the minimum cost
+            best_data = min(bundle.values(), key=lambda d: d.get(weight_key, d.get("base_weight", 1.0)))
+            
+            if "geometry" in best_data:
+                # geometry is a shapely LineString which uses (x, y) = (lon, lat)
+                geom = best_data["geometry"]
+                coords = [[lat, lon] for lon, lat in geom.coords]
+                
+                # Avoid duplicating the shared node at the start of the next edge
+                if path_coords:
+                    path_coords.extend(coords[1:])
+                else:
+                    path_coords.extend(coords)
+            else:
+                if not path_coords:
+                    path_coords.append(list(_node_latlon(graph, u)))
+                path_coords.append(list(_node_latlon(graph, v)))
 
     # ── 6. Compute ETA ─────────────────────────────────────────────────────────
     eta = _path_eta(graph, node_path, weight_key)
